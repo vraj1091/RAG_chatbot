@@ -30,3 +30,4 @@ orjson==3.9.10  # Faster JSON parsing
 gunicorn==21.2.0  # Production WSGI server
 
 pydantic-settings
+python-jose[cryptography]
