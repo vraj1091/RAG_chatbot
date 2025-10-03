@@ -31,3 +31,4 @@ gunicorn==21.2.0  # Production WSGI server
 
 pydantic-settings
 python-jose[cryptography]
+passlib[bcrypt]
