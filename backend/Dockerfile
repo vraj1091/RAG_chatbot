@@ -4,7 +4,8 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8000
+ENV PORT=7860
+
 
 # Set work directory
 WORKDIR /app
@@ -41,11 +42,11 @@ ENV DBPASSWORD=vraj10@PA
 ENV DBNAME=rag_chatbot
 
 # Expose port your app runs on
-EXPOSE 8000
+EXPOSE 7860
 
 # Health check endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://0.0.0.0:8000/health || exit 1
+    CMD curl -f http://0.0.0.0:7860/health || exit 1
 
 # Command to run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
