@@ -34,7 +34,7 @@ RUN adduser --disabled-password --gecos '' --uid 1000 appuser \
 USER appuser
 
 # Environment variables for database connection
-ENV DBHOST=192.168.1.16
+ENV DBHOST=34.170.243.16
 ENV DBPORT=3306
 ENV DBUSER=root
 ENV DBPASSWORD=vraj10@PA

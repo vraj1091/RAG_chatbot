@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
 
     # CORS
-    frontend_url: str = "http://localhost:3000"
+    frontend_url: str = "http://localhost:3000", "http://172.28.0.1:3000/"
 
     # AI Configuration - Gemini API
     gemini_api_key: str = "AIzaSyCsr9fjAeHEJGvfOFhsBcpeu-wOkQjHGmE"
@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> List[str]:
         # include both localhost and 127.0.0.1
-        return [self.frontend_url, "http://127.0.0.1:3000", "http://localhost:3000"]
+        return [self.frontend_url, "http://127.0.0.1:3000", "http://localhost:3000","https://rag-chatbot-frontend-oak8.onrender.com"]
 
     @property
     def upload_path(self) -> str:

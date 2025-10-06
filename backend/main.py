@@ -1,8 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 import os
+import asyncio
 from sqlalchemy import text
 from typing import List
 
@@ -11,10 +12,8 @@ from app.api.endpoints import auth, chat, documents
 from app.db.database import engine, SessionLocal
 from app.models import models
 
-
 # Create database tables if they do not exist
 models.Base.metadata.create_all(bind=engine)
-
 
 app = FastAPI(
     title="AI RAG Chatbot API",
@@ -23,9 +22,8 @@ app = FastAPI(
         "Gemini API, and multi-format document support including images with OCR"
     ),
     version="2.0.0",
-    debug=settings.debug
+    debug=settings.debug,
 )
-
 
 # CORS middleware to allow cross-origin calls from configured origins
 app.add_middleware(
@@ -36,22 +34,54 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # Ensure upload and vector store directories exist
 os.makedirs(settings.upload_path, exist_ok=True)
 os.makedirs(settings.vector_store_path, exist_ok=True)
 
-
 # Mount static files to serve uploaded documents if directory exists
 if os.path.exists(settings.upload_path):
     app.mount("/uploads", StaticFiles(directory=settings.upload_path), name="uploads")
-
 
 # Include API routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["🔐 Authentication"])
 app.include_router(documents.router, prefix="/api/v1/documents", tags=["📄 Document Management"])
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["💬 RAG Chat & History"])
 
+# Lazy Model Loader Class
+class ModelLoader:
+    def __init__(self):
+        self.model = None
+        self.loading = False
+        self.loaded = False
+
+    async def load_model(self):
+        if self.loaded:
+            return self.model
+        if self.loading:
+            while self.loading:
+                await asyncio.sleep(0.1)
+            return self.model
+        self.loading = True
+        try:
+            print("🤖 Loading AI model...")
+            # Replace the following sleep with your actual model loading logic
+            await asyncio.sleep(2)
+
+            # Example model loading (replace with your actual model code)
+            # from sentence_transformers import SentenceTransformer
+            # self.model = SentenceTransformer('all-MiniLM-L6-v2')
+            
+            self.model = "AI Model Loaded"  # Placeholder for actual model
+            self.loaded = True
+            print("✅ AI model loaded successfully!")
+            return self.model
+        except Exception as e:
+            print(f"❌ Failed to load model: {e}")
+            raise HTTPException(status_code=500, detail=f"Model loading failed: {str(e)}")
+        finally:
+            self.loading = False
+
+model_loader = ModelLoader()
 
 @app.get("/")
 async def root():
@@ -71,12 +101,9 @@ async def root():
         "admin": "/admin",
     }
 
-
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring"""
-
-    # Test database connection
     try:
         db = SessionLocal()
         db.execute(text("SELECT 1"))
@@ -85,10 +112,8 @@ async def health_check():
     except Exception as e:
         db_status = f"❌ Error: {str(e)}"
 
-    # Check Gemini API presence
     gemini_status = "✅ Configured" if settings.gemini_api_key else "⚠️ No API key"
 
-    # Test ChromaDB persistence
     try:
         import chromadb
         chroma_client = chromadb.PersistentClient(path=settings.vector_store_path)
@@ -98,7 +123,7 @@ async def health_check():
 
     return {
         "status": "healthy",
-        "timestamp": "2025-09-22T10:13:00Z",  # Optionally update dynamically
+        "timestamp": "2025-09-22T10:13:00Z",
         "services": {
             "database": db_status,
             "gemini_api": gemini_status,
@@ -107,7 +132,6 @@ async def health_check():
             "vector_store": f"✅ {settings.vector_store_path}",
         },
     }
-
 
 @app.get("/admin")
 async def admin_info():
@@ -126,8 +150,26 @@ async def admin_info():
         },
     }
 
+# Model status endpoint
+@app.get("/api/model/status")
+async def get_model_status():
+    return {
+        "loaded": model_loader.loaded,
+        "loading": model_loader.loading,
+        "status": "loaded" if model_loader.loaded else "loading" if model_loader.loading else "not_loaded"
+    }
 
-# Your legacy item routes (optional; include if still needed)
+# Preload model endpoint
+@app.post("/api/model/preload")
+async def preload_model(background_tasks: BackgroundTasks):
+    if model_loader.loaded:
+        return {"status": "already_loaded"}
+    if model_loader.loading:
+        return {"status": "loading"}
+    background_tasks.add_task(model_loader.load_model)
+    return {"status": "loading_started"}
+
+# Include legacy item routes (optional)
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -167,7 +209,6 @@ async def get_item(item_id: int):
     return item
 
 app.include_router(legacy_router)
-
 
 if __name__ == "__main__":
     uvicorn.run(
